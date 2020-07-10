@@ -156,7 +156,16 @@ The above autocorrelation shows that there is correlation between lags up to abo
 
 When Looking at the ACF graph for the original data, we see a strong persistent correlation with higher order lags. This is evidence that we should take a first diefference of the data to remove this autocorrelation.
 
-This autocorrelation plot can now be used to get an idea of a potential MA term.  A statistically significant lag of 1 suggests adding 1 MA term.  There is also a statistically significant 2nd, term, so adding another MA is another possibility.
+This makes sense, since we are trying to capture the effect of recent lags in our ARMA models, and with high correlation between distant lags, our models will not come close to the true process.
+
+Some rules of thumb:
+  - If the autocorrelation shows positive correlation at the first lag, then try adding an AR term.
+    
+  - If the autocorrelatuion shows negative correlation at the first lag, try adding MA terms.
+    
+    
+
+This autocorrelation plot can now be used to get an idea of a potential MA term.  Our differenced series shows negative significant correlation at lag of 1 suggests adding 1 MA term.  There is also a statistically significant 2nd, term, so adding another MA is another possibility.
 
 
 > If the ACF of the differenced series displays a sharp cutoff and/or the lag-1 autocorrelation is negative--i.e., if the series appears slightly "overdifferenced"--then consider adding an MA term to the model. The lag at which the ACF cuts off is the indicated number of MA terms. [Duke](https://people.duke.edu/~rnau/411arim3.htm#signatures)
@@ -171,13 +180,16 @@ In general, a partial correlation is a conditional correlation. It is the  amoun
 
 When we run a linear regression on our lags, the coefficients calculated factor in the influence of the other variables.  This reminds us of our autoregressive model.  Since the PACF shows the direct effect of previous lags, it helps us choose AR terms.  If there is a significant positive value at a lag, consider adding an AR term according to the number that you see.
 
-A rule-of-thumb for this situation, which will be discussed in more detail later on, is that positive autocorrelation is usually best treated by adding an AR term to the model and negative autocorrelation is usually best treated by adding an MA term. 
+Some rules of thumb: 
+
+    - A sharp drop after lag "k" suggests an AR-K model.
+    - A gradual decline suggests an MA.
 
 ![alt text](./img/armaguidelines.png)
 
-The plots above suggest that we should try a 1st order differenced AR(1) or AR(2) model on our weekly gun offense data.
+The plots above suggest that we should try a 1st order differenced MA(1) or MA(2) model on our weekly gun offense data.
 
-From our AIC scores, the AR(2) model performs fairly well, but so does the MA(2) with a first order difference.
+This aligns with our AIC scores from above.
 
 # auto_arima
 
