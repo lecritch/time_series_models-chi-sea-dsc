@@ -1,5 +1,5 @@
 
-# Time series Models
+# Time Series Models
 
 If we think back to our lecture on the bias-variance tradeoff, a perfect model is not possible.  There will always be inexplicable error. In time series modeling, we call that noise.  A timeseries that is completely random is called whitenoise, and is written mathematically as:
 
