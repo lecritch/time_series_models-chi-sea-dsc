@@ -844,6 +844,8 @@ The above autocorrelation shows that there is correlation between lags up to abo
 
 When Looking at the ACF graph for the original data, we see a strong persistent correlation with higher order lags. This is evidence that we should take a first diefference of the data to remove this autocorrelation.
 
+This makes sense, since we are trying to capture the effect of recent lags in our ARMA models, and with high correlation between distant lags, our models will not come close to the true process.
+
 
 ```python
 plot_acf(train.diff().dropna());
@@ -853,7 +855,14 @@ plot_acf(train.diff().dropna());
 ![png](index_files/index_80_0.png)
 
 
-This autocorrelation plot can now be used to get an idea of a potential MA term.  A statistically significant lag of 1 suggests adding 1 MA term.  There is also a statistically significant 2nd, term, so adding another MA is another possibility.
+Some rules of thumb:
+  - If the autocorrelation shows positive correlation at the first lag, then try adding an AR term.
+    
+  - If the autocorrelatuion shows negative correlation at the first lag, try adding MA terms.
+    
+    
+
+This autocorrelation plot can now be used to get an idea of a potential MA term.  Our differenced series shows negative significant correlation at lag of 1 suggests adding 1 MA term.  There is also a statistically significant 2nd, term, so adding another MA is another possibility.
 
 
 > If the ACF of the differenced series displays a sharp cutoff and/or the lag-1 autocorrelation is negative--i.e., if the series appears slightly "overdifferenced"--then consider adding an MA term to the model. The lag at which the ACF cuts off is the indicated number of MA terms. [Duke](https://people.duke.edu/~rnau/411arim3.htm#signatures)
@@ -872,18 +881,21 @@ plot_pacf(train.diff().dropna());
 ```
 
 
-![png](index_files/index_85_0.png)
+![png](index_files/index_86_0.png)
 
 
 When we run a linear regression on our lags, the coefficients calculated factor in the influence of the other variables.  This reminds us of our autoregressive model.  Since the PACF shows the direct effect of previous lags, it helps us choose AR terms.  If there is a significant positive value at a lag, consider adding an AR term according to the number that you see.
 
-A rule-of-thumb for this situation, which will be discussed in more detail later on, is that positive autocorrelation is usually best treated by adding an AR term to the model and negative autocorrelation is usually best treated by adding an MA term. 
+Some rules of thumb: 
+
+    - A sharp drop after lag "k" suggests an AR-K model.
+    - A gradual decline suggests an MA.
 
 ![alt text](./img/armaguidelines.png)
 
-The plots above suggest that we should try a 1st order differenced AR(1) or AR(2) model on our weekly gun offense data.
+The plots above suggest that we should try a 1st order differenced MA(1) or MA(2) model on our weekly gun offense data.
 
-From our AIC scores, the AR(2) model performs fairly well, but so does the MA(2) with a first order difference.
+This aligns with our AIC scores from above.
 
 # auto_arima
 
@@ -940,7 +952,7 @@ ax.plot(train)
 
 
 
-![png](index_files/index_95_1.png)
+![png](index_files/index_96_1.png)
 
 
 
@@ -960,7 +972,7 @@ ax.plot(train[50:70])
 
 
 
-![png](index_files/index_96_1.png)
+![png](index_files/index_97_1.png)
 
 
 
@@ -1074,7 +1086,7 @@ ax.plot(y_hat_test)
 
 
 
-![png](index_files/index_101_1.png)
+![png](index_files/index_102_1.png)
 
 
 
@@ -1092,7 +1104,7 @@ ax.plot(test)
 
 
 
-![png](index_files/index_102_1.png)
+![png](index_files/index_103_1.png)
 
 
 Our predictions on the test set certainly leave something to be desired.  
@@ -1105,7 +1117,7 @@ plot_acf(ts_weekly);
 ```
 
 
-![png](index_files/index_104_0.png)
+![png](index_files/index_105_0.png)
 
 
 Let's increase the lags
@@ -1116,7 +1128,7 @@ plot_acf(ts_weekly, lags=75);
 ```
 
 
-![png](index_files/index_106_0.png)
+![png](index_files/index_107_0.png)
 
 
 There seems to be a wave of correlation at around 50 lags.
@@ -1235,7 +1247,7 @@ ax.plot(y_hat_test)
 
 
 
-![png](index_files/index_117_1.png)
+![png](index_files/index_118_1.png)
 
 
 
@@ -1256,7 +1268,7 @@ ax.plot(y_hat_test)
 
 
 
-![png](index_files/index_118_1.png)
+![png](index_files/index_119_1.png)
 
 
 # Forecast
@@ -1292,5 +1304,5 @@ ax.set_title('Chicago Gun Crime Predictions\n One Year out')
 
 
 
-![png](index_files/index_123_1.png)
+![png](index_files/index_124_1.png)
 
