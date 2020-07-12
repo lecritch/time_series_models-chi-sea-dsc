@@ -1,9 +1,11 @@
 
 # Time Series Models
 
-If we think back to our lecture on the bias-variance tradeoff, a perfect model is not possible.  There will always be inexplicable error. In time series modeling, we call that noise.  A timeseries that is completely random is called whitenoise, and is written mathematically as:
+If we think back to our lecture on the bias-variance tradeoff, a perfect model is not possible.  There will always noise (inexplicable error). A timeseries that is completely random is called white noise, and is written mathematically as:
 
 $$\Large Y_t =  \epsilon_t$$
+
+The error term is randomly distributed around the mean, has constant variance, and no autocorrelation.
 
 
 ```python
@@ -57,42 +59,45 @@ ts_daily = pd.Series(ts_daily)
 ts_daily = ts_daily.reindex(ts_dr)
 ts_daily = ts_daily.fillna(daily_count)
 ts_daily = ts_daily.interpolate()
-```
 
-We are going to resample to the week level for this notebook.
-
-
-```python
-# Resample to week
-```
-
-
-```python
-# Code
-```
-
-
-```python
 ts_weekly = ts_daily.resample('W').mean()
+
+```
+
+
+
+
+    [<matplotlib.lines.Line2D at 0x1292976a0>]
+
+
+
+
+![png](index_files/index_8_1.png)
+
+
+
+```python
 fig, ax = plt.subplots()
 ax.plot(ts_weekly)
+ax.set_title("Weekly Reports of Gun Offenses in Chicago")
 ```
 
 
 
 
-    [<matplotlib.lines.Line2D at 0x118194ac8>]
+    Text(0.5, 1.0, 'Weekly Reports of Gun Offenses in Chicago')
 
 
 
 
-![png](index_files/index_12_1.png)
+![png](index_files/index_9_1.png)
 
 
-Train test split for a time series is a little different than what we are used to.  Because chronological order matters, we cannot randomly sample points in our data.  Instead, we cut off a portion of our data at the end, and reserve it as our test set.
+Train test split for a time series is a little different than what we are used to.  Because **chronological order matters**, we cannot randomly sample points in our data.  Instead, we cut off a portion of our data at the end, and reserve it as our test set.
 
 
 ```python
+# find the index which allows us to split off 20% of the data
 round(ts_weekly.shape[0]*.8)
 ```
 
@@ -105,46 +110,42 @@ round(ts_weekly.shape[0]*.8)
 
 
 ```python
+# Define train and test sets according to the index found above
 train = ts_weekly[:round(ts_weekly.shape[0]*.8)]
 test = ts_weekly[round(ts_weekly.shape[0]*.8):]
 
 fig, ax = plt.subplots()
 ax.plot(train)
 ax.plot(test)
-ax.set_title('Train test Split')
+ax.set_title('Train test Split');
 ```
 
 
-
-
-    Text(0.5, 1.0, 'Train test Split')
-
-
-
-
-![png](index_files/index_15_1.png)
+![png](index_files/index_12_0.png)
 
 
 We will now set aside our test set, and build our model on the train.
 
 # Random Walk
 
-A next logical step would be to simply predict the next data point with the point previous to it.  
+A good first attempt at a model for a time series would be to simply predict the next data point with the point previous to it.  
 
-We call this type of time series a random walk, and it is written mathematicall like so.
+We call this type of time series a random walk, and it is written mathematically like so.
 
 $$\Large Y_t = Y_{t-1} + \epsilon_t$$
 
-$\epsilon$ represents white noise error. 
+$\epsilon$ represents white noise error.  The formula indicates that the difference between a point and a point before it is white noise.
 
 $$\Large Y_t - Y_{t-1}=  \epsilon_t$$
+
+This makes sense, given one way we described making our series stationary was by applying a difference of a lag of 1.
 
 Let's bring back our Chicago gun crime data and make a simple random walk model.
 
 
 ```python
 # we can perform this with the shift operator
-
+# The prediction for the next day is the original series shifted to the future by one day.
 random_walk = train.shift(1)
 
 import matplotlib.pyplot as plt
@@ -152,32 +153,40 @@ fig, ax = plt.subplots()
 
 train[0:30].plot(ax=ax, c='r', label='original')
 random_walk[0:30].plot(ax=ax, c='b', label='shifted')
-plt.legend()
+ax.set_title('Random Walk')
+ax.legend();
+```
+
+
+![png](index_files/index_17_0.png)
+
+
+For a baseline to compare our later models, lets calculate our **RMSE** for the random walk
+
+
+```python
+from sklearn.metrics import mean_squared_error
+mean_squared_error(train[1:], random_walk.dropna())
 ```
 
 
 
 
-    <matplotlib.legend.Legend at 0x1187c75c0>
+    22.0670566893424
 
 
-
-
-![png](index_files/index_19_1.png)
-
-
-For a baseline to compare our later models, lets calculate our RMSE for the random walk
 
 
 ```python
 residuals = random_walk - train
-np.sqrt((residuals.dropna()**2).sum())
+mse = (residuals.dropna()**2).sum()/len(residuals-1)
+np.sqrt(mse.sum())
 ```
 
 
 
 
-    77.18876411837702
+    4.688883495660368
 
 
 
@@ -192,12 +201,12 @@ plt.plot(residuals.index, residuals.rolling(30).std())
 
 
 
-    [<matplotlib.lines.Line2D at 0x1188f0e80>]
+    [<matplotlib.lines.Line2D at 0x12a1d9278>]
 
 
 
 
-![png](index_files/index_23_1.png)
+![png](index_files/index_22_1.png)
 
 
 
@@ -208,25 +217,25 @@ plt.plot(residuals.index, residuals.rolling(30).var())
 
 
 
-    [<matplotlib.lines.Line2D at 0x1188954a8>]
+    [<matplotlib.lines.Line2D at 0x1299c72b0>]
 
 
 
 
-![png](index_files/index_24_1.png)
+![png](index_files/index_23_1.png)
 
 
 If we look at the rolling standard deviation of our errors, we can see that the performance of our model varies at different points in time.
 
 That is a result of the trends in our data.
 
-In the previous notebook, we were able to make our series stationary by differencing our data. 
+In the previous notebook, we were able to make our series **stationary** by differencing our data. 
 
 Let's repeat that process here. 
 
-In order to make our life easier, we will use statsmodels to difference our data via the ARIMA class. 
+In order to make our life easier, we will use statsmodels to difference our data via the **ARIMA** class. 
 
-We will break down what ARIMA is shortly, but for now, we will focus on the I, which stands for integrated.  A time series which needs to be differenced is said to be integrated [1](https://people.duke.edu/~rnau/411arim.htm). 
+We will break down what ARIMA is shortly, but for now, we will focus on the I, which stands for **integrated**.  A time series which has been be differenced to become stationary is saidf to have been integrated[1](https://people.duke.edu/~rnau/411arim.htm). 
 
 There is an order parameter in ARIMA with three slots: (p, d, q).  d represents our order of differencing, so putting a one there in our model will apply a first order difference.
 
@@ -289,8 +298,19 @@ random_walk
 
 
 ```python
-Visually, our differenced data looks more like white noise:
+# We put a typ='levels' to convert our predictions to remove the differencing performed.
+y_hat = rw.predict(typ='levels')
+np.sqrt(mean_squared_error(train[1:], y_hat))
 ```
+
+
+
+
+    4.697542272439977
+
+
+
+Visually, our differenced data looks more like white noise:
 
 
 ```python
@@ -312,7 +332,7 @@ ax.set_title('Weekly differenced data')
 
 By removing the trend from our data, we assume that our data's mean and variance are constant throughout.  But it is not just white noise.  If it were, our models could do no better than random predictions around the mean.  
 
-Our task now is to find more patterns in the series.  
+Our task now is to find **more patterns** in the series.  
 
 We will focus on the data points near to the point in question.  We can attempt to find patterns to how much influence previous points in the sequence have. 
 
@@ -322,11 +342,11 @@ If that made you think of regression, great! What we will be doing is assigning 
 
 Our next attempt at a model is the autoregressive model, which is a timeseries regressed on its previous values
 
-### $y_{t} = c + \phi_{1}y_{t-1} + \varepsilon_{t}$
+### $y_{t} = \phi_{0} + \phi_{1}y_{t-1} + \varepsilon_{t}$
 
 The above formula is a first order autoregressive model (AR1), which finds the best fit weight $\phi$ which, multiplied by the point previous to a point in question, yields the best fit model. 
 
-In our ARIMA model, the p variable of the order (p,d,q) represents the AR term.  For a first order AR model, we put a 1 there.
+In our ARIMA model, the **p** variable of the order (p,d,q) represents the AR term.  For a first order AR model, we put a 1 there.
 
 
 ```python
@@ -376,10 +396,10 @@ ar_1.summary()
   <th>Method:</th>             <td>css-mle</td>     <th>  S.D. of innovations</th>   <td>4.497</td> 
 </tr>
 <tr>
-  <th>Date:</th>          <td>Thu, 09 Jul 2020</td> <th>  AIC                </th> <td>1584.156</td>
+  <th>Date:</th>          <td>Sun, 12 Jul 2020</td> <th>  AIC                </th> <td>1584.156</td>
 </tr>
 <tr>
-  <th>Time:</th>              <td>07:57:30</td>     <th>  BIC                </th> <td>1594.952</td>
+  <th>Time:</th>              <td>14:51:26</td>     <th>  BIC                </th> <td>1594.952</td>
 </tr>
 <tr>
   <th>Sample:</th>           <td>01-12-2014</td>    <th>  HQIC               </th> <td>1588.491</td>
@@ -413,7 +433,7 @@ ar_1.summary()
 
 But, as you may notice, the output does not include RMSE.
 
-It does include AIC. We briefly touched on AIC with linear regression.  It is a metrics that we used to penalize models for having too many features.  A better model has a lower AIC.
+It does include AIC. We briefly touched on AIC with linear regression.  It is a metric with a strict penalty applied to we used models with too many features.  A better model has a lower AIC.
 
 Let's compare the first order autoregressive model to our Random Walk.
 
@@ -438,10 +458,10 @@ rw_model.summary()
   <th>Method:</th>               <td>css</td>       <th>  S.D. of innovations</th>   <td>4.698</td> 
 </tr>
 <tr>
-  <th>Date:</th>          <td>Thu, 09 Jul 2020</td> <th>  AIC                </th> <td>1605.628</td>
+  <th>Date:</th>          <td>Sun, 12 Jul 2020</td> <th>  AIC                </th> <td>1605.628</td>
 </tr>
 <tr>
-  <th>Time:</th>              <td>07:57:33</td>     <th>  BIC                </th> <td>1612.825</td>
+  <th>Time:</th>              <td>14:54:03</td>     <th>  BIC                </th> <td>1612.825</td>
 </tr>
 <tr>
   <th>Sample:</th>           <td>01-12-2014</td>    <th>  HQIC               </th> <td>1608.518</td>
@@ -461,28 +481,45 @@ rw_model.summary()
 
 
 
+
+```python
+print(f'Random Walk AIC: {rw.aic}')
+print(f'AR(1,1,0) AIC: {ar_1.aic}' )
+
+```
+
+    Random Walk AIC: 1605.628111571946
+    AR(1,1,0) AIC: 1584.1562780341596
+
+
 Our AIC for the AR(1) model is lower than the random walk, indicating improvement.  
 
 Before abandoning it for AIC, let's just make sure the RMSE is lower as well.
 
 
 ```python
-rmse = np.sqrt((ar_1.resid**2).sum())
-print(rmse)
+y_hat_ar1 = ar_1.predict(typ='levels')
+np.sqrt(mean_squared_error(train[1:], y_hat_ar1))
+
 ```
 
-    73.97870623211666
+
+
+
+    4.502200686486479
+
 
 
 
 ```python
-np.sqrt(sum(rw.resid**2))
+y_hat_rw = rw.predict(typ='levels')
+np.sqrt(mean_squared_error(train[1:], y_hat_rw))
 ```
 
 
 
 
-    77.18849602348361
+    4.697542272439977
 
 
 
@@ -519,15 +556,15 @@ print(lr.coef_)
 
 
 We can also factor in more than just the most recent point.
-$$\large y_{t} = c + \phi_{1}y_{t-1} + \phi_{2}y_{t-2}+ \varepsilon_{t}$$
+$$\large y_{t} = \phi_{0} + \phi_{1}y_{t-1} + \phi_{2}y_{t-2}+ \varepsilon_{t}$$
 
-We refer to the order of our AR model by the number of lags back we go.  The above formula refers to an AR(2) model.  We put a 2 in the p position of the ARIMA class order
+We refer to the order of our AR model by the number of lags back we go.  The above formula refers to an **AR(2)** model.  We put a 2 in the p position of the ARIMA class order
 
 
 ```python
 ar_2 = ARIMA(train, (2,1,0)).fit()
 
-# We put a typ='levels' to convert our predictions to remove the differencing performed.
+
 ar_2.predict(typ='levels')
 ```
 
@@ -569,7 +606,7 @@ The next type of model is based on error.  The idea behind the moving average mo
 
 $$\large Y_t = \mu +\epsilon_t + \theta * \epsilon_{t-1}$$
 
-The moving average model is a pretty cool idea. We make a prediction, see how far off we were, then adjust our next prediction by a factor of how far off our pervious predicion was.
+The moving average model is a pretty cool idea. We make a prediction, see how far off we were, then adjust our next prediction by a factor of how far off our pervious prediction was.
 
 In our ARIMA model, the q term of our order (p,d,q) refers to the MA component. To use one lagged error, we put 1 in the q position.
 
@@ -619,10 +656,10 @@ ma_1.summary()
   <th>Method:</th>             <td>css-mle</td>     <th>  S.D. of innovations</th>   <td>5.571</td> 
 </tr>
 <tr>
-  <th>Date:</th>          <td>Thu, 09 Jul 2020</td> <th>  AIC                </th> <td>1706.631</td>
+  <th>Date:</th>          <td>Sun, 12 Jul 2020</td> <th>  AIC                </th> <td>1706.631</td>
 </tr>
 <tr>
-  <th>Time:</th>              <td>08:05:21</td>     <th>  BIC                </th> <td>1717.437</td>
+  <th>Time:</th>              <td>15:07:14</td>     <th>  BIC                </th> <td>1717.437</td>
 </tr>
 <tr>
   <th>Sample:</th>           <td>01-05-2014</td>    <th>  HQIC               </th> <td>1710.970</td>
@@ -778,10 +815,7 @@ print(arma_21.aic)
     1558.0010402540224
 
 
-
-```python
 Best performance so far.
-```
 
 # ACF and PACF
 
@@ -789,22 +823,139 @@ We have been able to reduce our AIC by chance, adding fairly random p,d,q terms.
 
 We have two tools to help guide us in these decisions: the autocorrelation and partial autocorrelation functions.
 
-## ACF
+## PACF
 
-The autocorrelation plot of our time series is simply a version of the correlation plots we used in linear regression.  Our features this time are prior points in the time series, or the lags. 
+In general, a partial correlation is a **conditional correlation**. It is the  amount of correlation between a variable and a lag of itself that is not explained by correlations at all lower-order-lags. If $Y_t$ is correlated with $Y_{t-1}$, and $Y_{t-1}$ is equally correlated with $Y_{t-2}$, then we should also expect to find correlation between $Y_t$ and $Y_{t-2}$. Thus, the correlation at lag 1 "propagates" to lag 2 and presumably to higher-order lags. The partial autocorrelation at lag 2 is therefore the difference between the actual correlation at lag 2 and the expected correlation due to the propagation of correlation at lag 1.
 
-We can calculate a specific $\gamma_k$ with:
 
-${\displaystyle \gamma_k = \frac 1 n \sum\limits_{t=1}^{n-k} (y_t - \bar{y})(y_{t+k}-\bar{y})}$
 
 
 ```python
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+plot_pacf(train.diff().dropna());
 ```
 
 
-```python
+![png](index_files/index_76_0.png)
 
+
+The shaded area of the graph is the convidence interval.  When the correlation drops into the shaded area, that means there is no longer statistically significant correlation between lags.
+
+For an AR process, we run a linear regression on lags according to the order of the AR process. The coefficients calculated factor in the influence of the other variables.   
+
+Since the PACF shows the direct effect of previous lags, it helps us choose AR terms.  If there is a significant positive value at a lag, consider adding an AR term according to the number that you see.
+
+Some rules of thumb: 
+
+    - A sharp drop after lag "k" suggests an AR-K model.
+    - A gradual decline suggests an MA.
+
+## ACF
+
+The autocorrelation plot of our time series is simply a version of the correlation plots we used in linear regression.  Our features this time are prior points in the time series, or the **lags**. 
+
+We can calculate a specific covariance ($\gamma_k$) with:
+
+${\displaystyle \gamma_k = \frac 1 n \sum\limits_{t=1}^{n-k} (y_t - \bar{y_t})(y_{t+k}-\bar{y_{t+k}})}$
+
+
+```python
+df = pd.DataFrame(train)
+df.columns = ['lag_0']
+df['lag_1'] = train.shift()
+df.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>lag_0</th>
+      <th>lag_1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2014-01-05</th>
+      <td>31.200000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2014-01-12</th>
+      <td>19.000000</td>
+      <td>31.200000</td>
+    </tr>
+    <tr>
+      <th>2014-01-19</th>
+      <td>24.571429</td>
+      <td>19.000000</td>
+    </tr>
+    <tr>
+      <th>2014-01-26</th>
+      <td>24.571429</td>
+      <td>24.571429</td>
+    </tr>
+    <tr>
+      <th>2014-02-02</th>
+      <td>22.285714</td>
+      <td>24.571429</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+gamma_1 = sum(((df['lag_0'][1:]-df.lag_0[1:].mean())*(df['lag_1'].dropna()-df.lag_1.dropna().mean())))/(len(df.lag_1)-1)
+gamma_1
+```
+
+
+
+
+    47.273931188936466
+
+
+
+We then comput the Pearson correlation:
+
+### $\rho = \frac {\operatorname E[(y_1−\mu_1)(y_2−\mu_2)]} {\sigma_{1}\sigma_{2}} = \frac {\operatorname {Cov} (y_1,y_2)} {\sigma_{1}\sigma_{2}}$,
+
+${\displaystyle \rho_k = \frac {\sum\limits_{t=1}^{n-k} (y_t - \bar{y})(y_{t+k}-\bar{y})} {\sum\limits_{t=1}^{n} (y_t - \bar{y})^2}}$
+
+
+```python
+rho = gamma_1/(df.lag_0[1:].std(ddof=0)*df.lag_1.std(ddof=0))
+rho
+```
+
+
+
+
+    0.810771507696006
+
+
+
+
+```python
 df = pd.DataFrame(train)
 df.columns = ['lag_0']
 df['lag_1'] = train.shift()
@@ -812,6 +963,101 @@ df['lag_2'] = train.shift(2)
 df['lag_3'] = train.shift(3)
 df['lag_4'] = train.shift(4)
 df['lag_5'] = train.shift(5)
+df.corr()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>lag_0</th>
+      <th>lag_1</th>
+      <th>lag_2</th>
+      <th>lag_3</th>
+      <th>lag_4</th>
+      <th>lag_5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>lag_0</th>
+      <td>1.000000</td>
+      <td>0.810772</td>
+      <td>0.731753</td>
+      <td>0.725590</td>
+      <td>0.673699</td>
+      <td>0.663134</td>
+    </tr>
+    <tr>
+      <th>lag_1</th>
+      <td>0.810772</td>
+      <td>1.000000</td>
+      <td>0.810224</td>
+      <td>0.731427</td>
+      <td>0.725210</td>
+      <td>0.672541</td>
+    </tr>
+    <tr>
+      <th>lag_2</th>
+      <td>0.731753</td>
+      <td>0.810224</td>
+      <td>1.000000</td>
+      <td>0.810003</td>
+      <td>0.731024</td>
+      <td>0.724364</td>
+    </tr>
+    <tr>
+      <th>lag_3</th>
+      <td>0.725590</td>
+      <td>0.731427</td>
+      <td>0.810003</td>
+      <td>1.000000</td>
+      <td>0.809768</td>
+      <td>0.730663</td>
+    </tr>
+    <tr>
+      <th>lag_4</th>
+      <td>0.673699</td>
+      <td>0.725210</td>
+      <td>0.731024</td>
+      <td>0.809768</td>
+      <td>1.000000</td>
+      <td>0.809579</td>
+    </tr>
+    <tr>
+      <th>lag_5</th>
+      <td>0.663134</td>
+      <td>0.672541</td>
+      <td>0.724364</td>
+      <td>0.730663</td>
+      <td>0.809579</td>
+      <td>1.000000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
 list(df.corr()['lag_0'].index)
 plt.bar(list(df.corr()['lag_0'].index), list(df.corr()['lag_0']))
 ```
@@ -824,8 +1070,13 @@ plt.bar(list(df.corr()['lag_0'].index), list(df.corr()['lag_0']))
 
 
 
-![png](index_files/index_77_1.png)
+![png](index_files/index_87_1.png)
 
+
+
+```python
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+```
 
 
 ```python
@@ -835,16 +1086,18 @@ plot_acf(train);
 ```
 
 
-![png](index_files/index_78_0.png)
+![png](index_files/index_89_0.png)
 
-
-The shaded area of the graph is the convidence interval.  When the autocorrelation drops into the shaded area, that means there is no longer statistically significant correlation between lags. 
 
 The above autocorrelation shows that there is correlation between lags up to about 12 weeks back.  
 
-When Looking at the ACF graph for the original data, we see a strong persistent correlation with higher order lags. This is evidence that we should take a first diefference of the data to remove this autocorrelation.
+When Looking at the ACF graph for the original data, we see a strong persistent correlation with higher order lags. This is evidence that we should take a **first difference** of the data to remove this autocorrelation.
 
 This makes sense, since we are trying to capture the effect of recent lags in our ARMA models, and with high correlation between distant lags, our models will not come close to the true process.
+
+Generally, we use an ACF to predict MA terms.
+Moving Average models are using the error terms of the predicitons to calculate the next value.  This means that the algorithm does not incorporate the direct effect of the previous value. It models what are sometimes called **impulses** or **shocks** whose effect takes into accounts for the propogation of correlation from one lag to the other. 
+
 
 
 ```python
@@ -852,50 +1105,27 @@ plot_acf(train.diff().dropna());
 ```
 
 
-![png](index_files/index_80_0.png)
+![png](index_files/index_92_0.png)
 
-
-Some rules of thumb:
-  - If the autocorrelation shows positive correlation at the first lag, then try adding an AR term.
-    
-  - If the autocorrelatuion shows negative correlation at the first lag, try adding MA terms.
-    
-    
 
 This autocorrelation plot can now be used to get an idea of a potential MA term.  Our differenced series shows negative significant correlation at lag of 1 suggests adding 1 MA term.  There is also a statistically significant 2nd, term, so adding another MA is another possibility.
 
 
 > If the ACF of the differenced series displays a sharp cutoff and/or the lag-1 autocorrelation is negative--i.e., if the series appears slightly "overdifferenced"--then consider adding an MA term to the model. The lag at which the ACF cuts off is the indicated number of MA terms. [Duke](https://people.duke.edu/~rnau/411arim3.htm#signatures)
 
-The ACF can be used to identify the possible structure of time series data. That can be tricky going forward as there often isn’t a single clear-cut interpretation of a sample autocorrelation function.
-
-## PACF
-
-In general, a partial correlation is a conditional correlation. It is the  amount of correlation between a variable and a lag of itself that is not explained by correlations at all lower-order-lags. The autocorrelation of a time series $Y$ at lag 1 is the coefficient of correlation between $Y_t$ and $Y_{t-1}$, which is presumably also the correlation between $Y_{t-1}$ and $Y_{t-2}$. But if $Y_t$ is correlated with $Y_{t-1}$, and $Y_{t-1}$ is equally correlated with $Y_{t-2}$, then we should also expect to find correlation between $Y_t$ and $Y_{t-2}$. Thus, the correlation at lag 1 "propagates" to lag 2 and presumably to higher-order lags. The partial autocorrelation at lag 2 is therefore the difference between the actual correlation at lag 2 and the expected correlation due to the propagation of correlation at lag 1.
-
-
-
-
-```python
-plot_pacf(train.diff().dropna());
-```
-
-
-![png](index_files/index_86_0.png)
-
-
-When we run a linear regression on our lags, the coefficients calculated factor in the influence of the other variables.  This reminds us of our autoregressive model.  Since the PACF shows the direct effect of previous lags, it helps us choose AR terms.  If there is a significant positive value at a lag, consider adding an AR term according to the number that you see.
-
-Some rules of thumb: 
-
-    - A sharp drop after lag "k" suggests an AR-K model.
-    - A gradual decline suggests an MA.
+Rule of thumb:
+    
+  - If the autocorrelation shows negative correlation at the first lag, try adding MA terms.
+    
+    
 
 ![alt text](./img/armaguidelines.png)
 
 The plots above suggest that we should try a 1st order differenced MA(1) or MA(2) model on our weekly gun offense data.
 
 This aligns with our AIC scores from above.
+
+The ACF can be used to identify the possible structure of time series data. That can be tricky going forward as there often isn’t a single clear-cut interpretation of a sample autocorrelation function.
 
 # auto_arima
 
@@ -908,16 +1138,16 @@ from pmdarima import auto_arima
 auto_arima(train, start_p=0, start_q=0, max_p=6, max_q=3, seasonal=False, trace=True)
 ```
 
-    Fit ARIMA: order=(0, 1, 0); AIC=1605.628, BIC=1612.825, Fit time=0.003 seconds
-    Fit ARIMA: order=(1, 1, 0); AIC=1584.156, BIC=1594.952, Fit time=0.014 seconds
+    Fit ARIMA: order=(0, 1, 0); AIC=1605.628, BIC=1612.825, Fit time=0.004 seconds
+    Fit ARIMA: order=(1, 1, 0); AIC=1584.156, BIC=1594.952, Fit time=0.015 seconds
     Fit ARIMA: order=(0, 1, 1); AIC=1561.660, BIC=1572.455, Fit time=0.016 seconds
-    Fit ARIMA: order=(1, 1, 1); AIC=1558.132, BIC=1572.526, Fit time=0.048 seconds
-    Fit ARIMA: order=(1, 1, 2); AIC=1553.146, BIC=1571.138, Fit time=0.069 seconds
-    Fit ARIMA: order=(2, 1, 3); AIC=1555.821, BIC=1581.010, Fit time=0.206 seconds
-    Fit ARIMA: order=(0, 1, 2); AIC=1555.903, BIC=1570.296, Fit time=0.025 seconds
-    Fit ARIMA: order=(2, 1, 2); AIC=1555.144, BIC=1576.735, Fit time=0.083 seconds
+    Fit ARIMA: order=(1, 1, 1); AIC=1558.132, BIC=1572.526, Fit time=0.049 seconds
+    Fit ARIMA: order=(1, 1, 2); AIC=1553.146, BIC=1571.138, Fit time=0.090 seconds
+    Fit ARIMA: order=(2, 1, 3); AIC=1555.821, BIC=1581.010, Fit time=0.217 seconds
+    Fit ARIMA: order=(0, 1, 2); AIC=1555.903, BIC=1570.296, Fit time=0.027 seconds
+    Fit ARIMA: order=(2, 1, 2); AIC=1555.144, BIC=1576.735, Fit time=0.087 seconds
     Fit ARIMA: order=(1, 1, 3); AIC=1555.145, BIC=1576.735, Fit time=0.099 seconds
-    Total fit time: 0.565 seconds
+    Total fit time: 0.607 seconds
 
 
 
@@ -947,12 +1177,12 @@ ax.plot(train)
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a222af978>]
+    [<matplotlib.lines.Line2D at 0x12c78c208>]
 
 
 
 
-![png](index_files/index_96_1.png)
+![png](index_files/index_104_1.png)
 
 
 
@@ -967,12 +1197,12 @@ ax.plot(train[50:70])
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a20e540f0>]
+    [<matplotlib.lines.Line2D at 0x12c7f2438>]
 
 
 
 
-![png](index_files/index_97_1.png)
+![png](index_files/index_105_1.png)
 
 
 
@@ -995,10 +1225,10 @@ aa_model.summary()
   <th>Method:</th>             <td>css-mle</td>     <th>  S.D. of innovations</th>   <td>4.212</td> 
 </tr>
 <tr>
-  <th>Date:</th>          <td>Thu, 09 Jul 2020</td> <th>  AIC                </th> <td>1553.146</td>
+  <th>Date:</th>          <td>Sun, 12 Jul 2020</td> <th>  AIC                </th> <td>1553.146</td>
 </tr>
 <tr>
-  <th>Time:</th>              <td>10:20:33</td>     <th>  BIC                </th> <td>1571.138</td>
+  <th>Time:</th>              <td>16:46:10</td>     <th>  BIC                </th> <td>1571.138</td>
 </tr>
 <tr>
   <th>Sample:</th>           <td>01-12-2014</td>    <th>  HQIC               </th> <td>1560.371</td>
@@ -1081,12 +1311,12 @@ ax.plot(y_hat_test)
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a2646d710>]
+    [<matplotlib.lines.Line2D at 0x12c8c9d68>]
 
 
 
 
-![png](index_files/index_102_1.png)
+![png](index_files/index_110_1.png)
 
 
 
@@ -1099,12 +1329,24 @@ ax.plot(test)
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a20ee6780>]
+    [<matplotlib.lines.Line2D at 0x12ca7cf98>]
 
 
 
 
-![png](index_files/index_103_1.png)
+![png](index_files/index_111_1.png)
+
+
+
+```python
+np.sqrt(mean_squared_error(test, y_hat_test))
+```
+
+
+
+
+    12.100167204815785
+
 
 
 Our predictions on the test set certainly leave something to be desired.  
@@ -1117,7 +1359,7 @@ plot_acf(ts_weekly);
 ```
 
 
-![png](index_files/index_105_0.png)
+![png](index_files/index_114_0.png)
 
 
 Let's increase the lags
@@ -1128,7 +1370,7 @@ plot_acf(ts_weekly, lags=75);
 ```
 
 
-![png](index_files/index_107_0.png)
+![png](index_files/index_116_0.png)
 
 
 There seems to be a wave of correlation at around 50 lags.
@@ -1201,22 +1443,22 @@ for param in pdq:
             continue
 ```
 
-    ARIMA(0, 1, 0)x(0, 1, 0, 52)12 - AIC:1406.5914910305441
-    ARIMA(0, 1, 0)x(0, 1, 1, 52)12 - AIC:1039.6273546182113
-    ARIMA(0, 1, 0)x(1, 1, 0, 52)12 - AIC:1055.4512482807704
-    ARIMA(0, 1, 0)x(1, 1, 1, 52)12 - AIC:1038.419076265242
-    ARIMA(0, 1, 1)x(0, 1, 0, 52)12 - AIC:1326.266685805947
-    ARIMA(0, 1, 1)x(0, 1, 1, 52)12 - AIC:978.1309943041055
-    ARIMA(0, 1, 1)x(1, 1, 0, 52)12 - AIC:1005.6947621192127
-    ARIMA(0, 1, 1)x(1, 1, 1, 52)12 - AIC:980.71332272061
-    ARIMA(1, 1, 0)x(0, 1, 0, 52)12 - AIC:1373.0472465290327
-    ARIMA(1, 1, 0)x(0, 1, 1, 52)12 - AIC:1019.1651883767508
-    ARIMA(1, 1, 0)x(1, 1, 0, 52)12 - AIC:1024.5423831365738
-    ARIMA(1, 1, 0)x(1, 1, 1, 52)12 - AIC:1018.4857412836736
-    ARIMA(1, 1, 1)x(0, 1, 0, 52)12 - AIC:1320.7264572171368
-    ARIMA(1, 1, 1)x(0, 1, 1, 52)12 - AIC:973.5518935855749
-    ARIMA(1, 1, 1)x(1, 1, 0, 52)12 - AIC:988.5066193103887
-    ARIMA(1, 1, 1)x(1, 1, 1, 52)12 - AIC:975.3115937856937
+    ARIMA(0, 1, 0)x(0, 1, 0, 52) - AIC:1406.5914910305441
+    ARIMA(0, 1, 0)x(0, 1, 1, 52) - AIC:1039.6273546182113
+    ARIMA(0, 1, 0)x(1, 1, 0, 52) - AIC:1055.4512482807704
+    ARIMA(0, 1, 0)x(1, 1, 1, 52) - AIC:1038.419076265242
+    ARIMA(0, 1, 1)x(0, 1, 0, 52) - AIC:1326.266685805947
+    ARIMA(0, 1, 1)x(0, 1, 1, 52) - AIC:978.1309943041055
+    ARIMA(0, 1, 1)x(1, 1, 0, 52) - AIC:1005.6947621192127
+    ARIMA(0, 1, 1)x(1, 1, 1, 52) - AIC:980.71332272061
+    ARIMA(1, 1, 0)x(0, 1, 0, 52) - AIC:1373.0472465290327
+    ARIMA(1, 1, 0)x(0, 1, 1, 52) - AIC:1019.1651883767508
+    ARIMA(1, 1, 0)x(1, 1, 0, 52) - AIC:1024.5423831365738
+    ARIMA(1, 1, 0)x(1, 1, 1, 52) - AIC:1018.4857412836736
+    ARIMA(1, 1, 1)x(0, 1, 0, 52) - AIC:1320.7264572171368
+    ARIMA(1, 1, 1)x(0, 1, 1, 52) - AIC:973.5518935855749
+    ARIMA(1, 1, 1)x(1, 1, 0, 52) - AIC:988.5066193103887
+    ARIMA(1, 1, 1)x(1, 1, 1, 52) - AIC:975.3115937856937
 
 
 Let's try the third from the bottom, ARIMA(1, 1, 1)x(0, 1, 1, 52)12 - AIC:973.5518935855749
@@ -1242,12 +1484,12 @@ ax.plot(y_hat_test)
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a2f783b38>]
+    [<matplotlib.lines.Line2D at 0x12caf1e10>]
 
 
 
 
-![png](index_files/index_118_1.png)
+![png](index_files/index_127_1.png)
 
 
 
@@ -1263,12 +1505,24 @@ ax.plot(y_hat_test)
 
 
 
-    [<matplotlib.lines.Line2D at 0x1a26b82710>]
+    [<matplotlib.lines.Line2D at 0x12cc43a58>]
 
 
 
 
-![png](index_files/index_119_1.png)
+![png](index_files/index_128_1.png)
+
+
+
+```python
+np.sqrt(mean_squared_error(test, y_hat_test))
+```
+
+
+
+
+    5.0673442561861135
+
 
 
 # Forecast
@@ -1304,5 +1558,5 @@ ax.set_title('Chicago Gun Crime Predictions\n One Year out')
 
 
 
-![png](index_files/index_124_1.png)
+![png](index_files/index_134_1.png)
 
